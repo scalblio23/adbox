@@ -144,6 +144,17 @@ ol.struct li{margin:2px 0}
 .out{background:var(--soft);border-radius:10px;padding:14px}
 .out h3{font-size:14px;font-weight:700;margin-bottom:6px}
 
+.exgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.ex{position:relative;border-radius:10px;overflow:hidden;background:#111;border:1.5px solid var(--line)}
+.ex img,.ex video{display:block;width:100%;height:auto;max-height:420px;object-fit:contain;background:#111}
+.ex button.zoom{display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in}
+.ex .rm{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.65);color:#fff;border:0;border-radius:99px;width:26px;height:26px;cursor:pointer;font-weight:700}
+.exlink{display:flex;align-items:center;gap:8px;padding:12px;background:var(--soft);border-radius:10px;border:1.5px solid var(--line);font-weight:650;color:var(--text);text-decoration:none;overflow-wrap:anywhere}
+.exlink .rm{margin-left:auto;background:none;border:0;color:var(--alert);cursor:pointer;font-weight:700}
+.tpl .real{position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;z-index:4}
+.lightbox{position:fixed;inset:0;background:rgba(5,8,12,.88);z-index:60;display:grid;place-items:center;padding:24px;cursor:zoom-out}
+.lightbox img{max-width:100%;max-height:100%;border-radius:8px}
+
 /* tables */
 .tbl{width:100%;border-collapse:collapse;font-size:14px}
 .tbl th{text-align:left;font-size:12.5px;color:var(--muted);font-weight:650;padding:6px 10px;border-bottom:1.5px solid var(--line)}
@@ -349,6 +360,24 @@ function toast(m){const t=$("#toast");t.textContent=m;t.classList.remove("hide")
 function fmtDate(ms){if(!ms)return"";const d=new Date(ms);return d.toLocaleDateString("en-AU",{day:"numeric",month:"short"})+", "+d.toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"})}
 function domainOf(u){try{return new URL(/^https?:/.test(u)?u:"https://"+u).hostname.replace(/^www\./,"")}catch{return u||"yourwebsite.com.au"}}
 function tplById(id){return L.templates.find(t=>t.id===id)}
+const exMedia=x=>(x.examples||[]).filter(e=>e.type==="image"||e.type==="video");
+/* Card thumbnail: the template's first real example, else the drawn mock. */
+function tplThumb(x){
+  const e=exMedia(x)[0];
+  if(!e)return mock(x.style,DEMO[x.style]||x.structure,"r45");
+  const n=(x.examples||[]).length;
+  return `<div class="mf r45">${e.type==="video"?`<video src="${esc(e.url)}#t=0.5" muted playsinline preload="metadata"></video>`:`<img src="${esc(e.url)}" alt="" loading="lazy">`}<span class="real">${n>1?n+" real examples":"Real example"}</span></div>`;
+}
+/* Every example for a template; edit=true adds remove buttons (Libraries). */
+function exGallery(x,edit){
+  const ex=x.examples||[];
+  if(!ex.length)return "";
+  const rm=i=>edit?`<button class="rm" data-a="tplexdel" data-id="${x.id}" data-i="${i}" aria-label="Remove example">✕</button>`:"";
+  const media=ex.map((e,i)=>e.type==="image"?`<div class="ex"><button class="zoom" data-a="zoom" data-src="${esc(e.url)}" aria-label="Enlarge example"><img src="${esc(e.url)}" alt="${esc(x.name)} example" loading="lazy"></button>${rm(i)}</div>`
+    :e.type==="video"?`<div class="ex"><video src="${esc(e.url)}" controls playsinline preload="metadata"></video>${rm(i)}</div>`:"").join("");
+  const links=ex.map((e,i)=>e.type==="link"?`<a class="exlink" href="${esc(e.url)}" target="_blank" rel="noopener">▶ ${esc(e.label||"Watch the example video")}${rm(i)}</a>`:"").join("");
+  return `${media?`<div class="exgrid">${media}</div>`:""}${links?`<div class="stack" style="gap:8px;margin-top:${media?10:0}px">${links}</div>`:""}`;
+}
 
 function newBrief(){
   return {title:"",client:"",offer:"",audience:"",location:"",benefits:"",info:"",url:"",cta:"Learn more",tone:"",
@@ -655,10 +684,11 @@ function stepCreative(){
   const b=S.brief,t=tplById(b.templateId),c=b.creative;
   return head(3,"Pick the creative format. You'll get the on-screen text, art direction and a prompt to paste into the build tool.")+
   `<div class="row between" style="margin-bottom:12px"><span class="sub" style="color:var(--muted)">${L.templates.length} templates</span><a class="btn ghost" href="${NOTION_URL}" target="_blank" rel="noopener">See the real examples in Notion</a></div>
-  ${L.templates.length?`<div class="tpls">${L.templates.map(x=>`<button class="tpl" data-a="picktpl" data-id="${x.id}" aria-pressed="${x.id===b.templateId}">${mock(x.style,DEMO[x.style]||x.structure,"r45")}<b>${esc(x.name)}</b><span class="kind ${x.kind}">${x.kind==="video"?"Video":"Static"}</span></button>`).join("")}</div>`:`<div class="empty"><b>No templates yet</b>Add creative templates in Libraries.</div>`}
+  ${L.templates.length?`<div class="tpls">${L.templates.map(x=>`<button class="tpl" data-a="picktpl" data-id="${x.id}" aria-pressed="${x.id===b.templateId}">${tplThumb(x)}<b>${esc(x.name)}</b><span class="kind ${x.kind}">${x.kind==="video"?"Video":"Static"}</span></button>`).join("")}</div>`:`<div class="empty"><b>No templates yet</b>Add creative templates in Libraries.</div>`}
   ${t?`<div class="split" style="margin-top:24px"><div class="panel stack">
       <div><h2>${esc(t.name)}</h2>${t.description?`<p class="sub" style="margin:4px 0 0">${esc(t.description)}</p>`:""}</div>
       <div><b style="font-size:14px">Structure</b><ol class="struct">${(t.structure||[]).map(s=>`<li>${esc(s)}</li>`).join("")}</ol></div>
+      ${(t.examples||[]).length?`<div><b style="font-size:14px">Real examples</b><div style="margin-top:8px">${exGallery(t,false)}</div></div>`:""}
       <label class="fld"><span>Build it in</span><select data-f="tool">${TOOLS.map(x=>`<option ${(b.tool||t.tool)===x?"selected":""}>${x}</option>`).join("")}</select><small>Suggested for this template: ${esc(t.tool||"-")}</small></label>
       <button class="btn primary" data-a="gencreative" ${S.busy.cr?"disabled":""}>Generate creative brief</button>
       ${busyUI("cr","Working out the creative…")}
@@ -787,6 +817,9 @@ function viewLibs(){
       <label class="fld"><span>Notes</span><textarea data-tpl="${x.id}.description" rows="2">${esc(x.description||"")}</textarea></label>
       <div class="grid2"><label class="fld"><span>Suggested tool</span><select data-tpl="${x.id}.tool">${TOOLS.map(o=>`<option ${o===x.tool?"selected":""}>${o}</option>`).join("")}</select></label>
       <label class="fld"><span>Preview style</span><select data-tpl="${x.id}.style">${Object.keys(DEMO).map(o=>`<option ${o===x.style?"selected":""}>${o}</option>`).join("")}</select></label></div>
+      <div class="fld"><span>Real examples</span>${exGallery(x,true)||`<small>No examples yet.</small>`}
+        <div class="row">${assets?`<label class="btn">${S.busy["ex"+x.id]?"Uploading…":"Upload image or video"}<input type="file" accept="image/*,video/*" data-a="tplupload" data-id="${x.id}" class="hide"></label>`:""}
+        <input data-tpllink="${x.id}" placeholder="Or paste a Loom / video link" style="flex:1;min-width:180px"></div></div>
       <div><button class="btn ghost danger" data-a="tpldel" data-id="${x.id}">Delete template</button></div></div>
       <div style="max-width:220px">${mock(x.style,DEMO[x.style]||x.structure,x.kind==="video"?"r916":"r45")}</div></div></div>`).join("")}
       <div><button class="btn" data-a="tpladd">Add a creative template</button></div></div>`;
@@ -832,6 +865,15 @@ document.addEventListener("change",async e=>{
   if(el.dataset.tpl){const [id,p]=el.dataset.tpl.split(".");const x=tplById(id);if(!x)return;
     if(p==="structureText")x.structure=el.value.split("\n").map(s=>s.trim()).filter(Boolean);else x[p]=el.value;
     saveTpl(x);if(p==="style"||p==="kind")render();return}
+  if(el.dataset.tpllink){const x=tplById(el.dataset.tpllink),u=el.value.trim();if(!x||!u)return;
+    if(!/^https?:\/\//.test(u)){toast("Paste a full link starting with https://");return}
+    x.examples=[...(x.examples||[]),{type:"link",url:u}];saveTpl(x);render();return}
+  if(el.dataset.a==="tplupload"&&el.files&&el.files[0]){
+    const x=tplById(el.dataset.id),file=el.files[0];if(!x||!assets)return;S.busy["ex"+x.id]=1;render();
+    try{const r=await assets.upload(file);const ty=(r.contentType||file.type||"").startsWith("video")?"video":"image";
+      x.examples=[...(x.examples||[]),{type:ty,id:r.id,url:"/_blob/"+r.id}];await saveTpl(x)}
+    catch(err){toast(err&&err.code==="too_large"?"That file is over 20 MB.":"Upload didn't work. Check you have editor access and try again.")}
+    delete S.busy["ex"+x.id];render();return}
   if(el.dataset.a==="upload"&&el.files&&el.files[0]){
     const file=el.files[0];if(!assets)return;S.busy.up=1;render();
     try{const r=await assets.upload(file);S.brief.asset={id:r.id,url:"/_blob/"+r.id,type:r.contentType||file.type};scheduleSave()}
@@ -839,7 +881,7 @@ document.addEventListener("change",async e=>{
     delete S.busy.up;render();
   }
 });
-document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.classList.contains("card")){e.preventDefault();e.target.click()}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){const lb=$(".lightbox");if(lb){lb.remove();return}}if((e.key==="Enter"||e.key===" ")&&e.target.classList.contains("card")){e.preventDefault();e.target.click()}});
 document.addEventListener("click",async e=>{
   const el=e.target.closest("[data-a]");if(!el)return;
   const a=el.dataset.a,b=S.brief;
@@ -882,6 +924,8 @@ document.addEventListener("click",async e=>{
     case"libtab":S.libTab=el.dataset.v;render();break;
     case"libadd":{const k=el.dataset.k;L[k].push(k==="copy"?{id:uidGen(),title:"New example",text:""}:{id:uidGen(),text:"New headline"});render();saveLib(k);break}
     case"libdel":{const k=el.dataset.k;L[k].splice(+el.dataset.i,1);render();saveLib(k);break}
+    case"zoom":{const d=document.createElement("div");d.className="lightbox";d.innerHTML=`<img src="${esc(el.dataset.src)}" alt="Example, enlarged">`;d.onclick=()=>d.remove();document.body.appendChild(d);break}
+    case"tplexdel":{const x=tplById(el.dataset.id);if(!x)break;x.examples=(x.examples||[]).filter((_,i)=>i!==+el.dataset.i);render();saveTpl(x);break}
     case"tpladd":{const x={id:uidGen(),name:"New template",kind:"static",structure:["Call out the audience","Benefit","CTA"],description:"",tool:"Canva",style:"simple",order:(L.templates.length+1)*10};L.templates.push(x);render();saveTpl(x);break}
     case"tpldel":{if(!db){toast("Sign in to save template changes.");break}
       if(tplFromSeed){const i=L.templates.findIndex(x=>x.id===el.dataset.id);if(i<0)break;L.templates.splice(i,1);render();if(L.templates.length)saveTpl(L.templates[0]);break}

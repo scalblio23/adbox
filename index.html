@@ -1,11 +1,915 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>adbox</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ad Brief Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#17202D; --ink-2:#222D3D; --ink-text:#E9EDF3; --ink-muted:#93A0B4;
+  --paper:#F4F6F9; --surface:#FFFFFF; --line:#D9DEE6; --text:#19202B; --muted:#5A6576;
+  --signal:#FFC928; --signal-text:#1B1606; --alert:#DD3326; --ok:#1C8F60; --warn:#B26A00;
+  --field:#FFFFFF; --soft:#EEF1F5;
+  --font:"Archivo", "Helvetica Neue", Arial, system-ui, sans-serif;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#10141B; --surface:#181E28; --line:#2B3442; --text:#E7EAF0; --muted:#9AA4B4;
+    --field:#121821; --soft:#1F2733; --ink:#0B1018; --ink-2:#18202C; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#10141B; --surface:#181E28; --line:#2B3442; --text:#E7EAF0; --muted:#9AA4B4;
+  --field:#121821; --soft:#1F2733; --ink:#0B1018; --ink-2:#18202C; color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--paper);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5;font-variation-settings:"wdth" 100}
+img,video{max-width:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+h1,h2,h3{margin:0;line-height:1.15}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--ink);color:var(--ink-text);position:sticky;top:env(safe-area-inset-top,0px);z-index:20}
+.brand{font-weight:800;font-variation-settings:"wdth" 75;font-size:20px;letter-spacing:.01em;display:flex;align-items:center;gap:10px;white-space:nowrap}
+.brand i{display:inline-block;width:14px;height:14px;background:var(--signal);border-radius:3px}
+.top nav{display:flex;gap:4px}
+.top nav button{background:none;border:0;color:var(--ink-muted);padding:6px 12px;border-radius:6px;cursor:pointer;font-weight:600}
+.top nav button[aria-current="true"]{color:var(--ink-text);background:var(--ink-2)}
+.top .spacer{flex:1}
+.save{font-size:13px;color:var(--ink-muted);white-space:nowrap}
+
+/* editor layout */
+.editor{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:calc(100% - 52px)}
+.rail{background:var(--ink);color:var(--ink-text);padding:20px 14px 40px}
+.rail .bt{font-weight:700;font-size:15px;padding:0 8px 4px;overflow-wrap:anywhere}
+.rail .bc{font-size:13px;color:var(--ink-muted);padding:0 8px 18px}
+.steps{list-style:none;margin:0;padding:0;position:relative}
+.steps li button{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;width:100%;text-align:left;background:none;border:0;color:var(--ink-muted);padding:10px 8px;border-radius:8px;cursor:pointer}
+.steps li button:hover{background:var(--ink-2)}
+.steps .n{width:28px;height:28px;border-radius:50%;border:2px solid #3A4659;display:grid;place-items:center;font-weight:800;font-size:13px;font-variation-settings:"wdth" 80}
+.steps .done .n{background:#2E3B4F;border-color:#2E3B4F;color:var(--ink-text)}
+.steps .cur button{background:var(--ink-2);color:var(--ink-text)}
+.steps .cur .n{background:var(--signal);border-color:var(--signal);color:var(--signal-text)}
+.steps b{display:block;font-weight:700;color:inherit;font-size:14.5px}
+.steps small{display:block;font-size:12.5px;line-height:1.35;margin-top:2px;color:var(--ink-muted)}
+
+main.pane{padding:28px clamp(16px,4vw,48px) 80px;max-width:1180px;width:100%}
+.stephead{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
+.stephead .num{font-weight:800;font-variation-settings:"wdth" 70;font-size:46px;line-height:1;color:var(--signal);-webkit-text-stroke:1.5px var(--text);paint-order:stroke}
+.stephead h1{font-size:34px;font-weight:800;font-variation-settings:"wdth" 78}
+.lede{color:var(--muted);max-width:68ch;margin:0 0 24px}
+
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.span2{grid-column:1/-1}
+.fld{display:flex;flex-direction:column;gap:6px}
+.fld>span{font-weight:650;font-size:14px}
+.fld small{color:var(--muted);font-size:12.5px}
+input[type=text],input:not([type]),select,textarea{width:100%;background:var(--field);border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;line-height:1.45}
+textarea{resize:vertical;min-height:44px}
+input:focus,select:focus,textarea:focus{border-color:var(--text);outline:none}
+
+.btn{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--line);background:var(--surface);color:var(--text);padding:9px 14px;border-radius:8px;font-weight:650;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--text)}
+.btn.primary{background:var(--signal);border-color:var(--signal);color:var(--signal-text)}
+.btn.primary:hover{filter:brightness(.96);border-color:var(--signal)}
+.btn.dark{background:var(--text);border-color:var(--text);color:var(--paper)}
+.btn.ghost{border-color:transparent;background:none;padding:6px 8px;color:var(--muted)}
+.btn.ghost:hover{color:var(--text);border-color:transparent}
+.btn.danger{color:var(--alert)}
+.btn[disabled]{opacity:.55;cursor:default}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.between{justify-content:space-between}
+
+.panel{background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:18px}
+.panel h2{font-size:18px;font-weight:750;margin-bottom:4px}
+.panel .sub{color:var(--muted);font-size:13.5px;margin:0 0 14px}
+.stack{display:flex;flex-direction:column;gap:14px}
+.split{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:20px;align-items:start}
+.sticky{position:sticky;top:76px}
+
+.ref{border:1.5px solid var(--line);border-radius:10px;background:var(--surface)}
+.ref+.ref{margin-top:8px}
+.ref summary{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;list-style:none}
+.ref summary::-webkit-details-marker{display:none}
+.ref summary input{width:18px;height:18px;accent-color:var(--text);flex:none}
+.ref summary b{font-weight:650;font-size:14px;flex:1}
+.ref summary .tw{color:var(--muted);font-size:12px}
+.ref pre{white-space:pre-wrap;font-family:var(--font);font-size:13.5px;margin:0;padding:0 14px 14px 40px;color:var(--muted);max-height:260px;overflow:auto}
+
+.variant{border:1.5px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.variant header{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1.5px solid var(--line);background:var(--soft);font-size:13px}
+.variant header b{font-weight:700}
+.variant header .tag{color:var(--muted)}
+.variant textarea{border:0;border-radius:0;min-height:180px;padding:14px;background:var(--surface)}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:999px;padding:4px 11px;font-size:13px;font-weight:600;background:var(--surface);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--text);color:var(--paper);border-color:var(--text)}
+.count{font-size:12px;color:var(--muted);min-width:44px;text-align:right}
+.count.over{color:var(--alert);font-weight:700}
+
+.hlrow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center}
+.hlrow small{grid-column:1/-1;color:var(--muted);font-size:12.5px;margin-top:-4px}
+
+.empty{border:2px dashed var(--line);border-radius:12px;padding:28px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--text);font-size:16px;margin-bottom:4px}
+
+.thinking{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px}
+.dots{display:inline-flex;gap:4px}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--text);opacity:.25;animation:blink 1.2s infinite}
+.dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
+@keyframes blink{50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.dots i{animation:none;opacity:.6}}
+
+/* templates */
+.tpls{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+.tpl{border:2px solid var(--line);border-radius:12px;background:var(--surface);padding:10px;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:8px}
+.tpl:hover{border-color:var(--muted)}
+.tpl[aria-pressed="true"]{border-color:var(--text);box-shadow:0 0 0 3px var(--signal)}
+.tpl b{font-size:14px;font-weight:700;line-height:1.25}
+.tpl small{color:var(--muted);font-size:12px}
+.kind{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--soft);color:var(--muted);align-self:flex-start}
+.kind.video{background:#FFE9A6;color:#5C4500}
+ol.struct{margin:6px 0 0;padding-left:20px}
+ol.struct li{margin:2px 0}
+.out{background:var(--soft);border-radius:10px;padding:14px}
+.out h3{font-size:14px;font-weight:700;margin-bottom:6px}
+
+/* tables */
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{text-align:left;font-size:12.5px;color:var(--muted);font-weight:650;padding:6px 10px;border-bottom:1.5px solid var(--line)}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl td:first-child{white-space:nowrap;font-weight:700;font-variation-settings:"wdth" 80}
+.scroll{overflow-x:auto}
+
+/* ---------- creative mocks ---------- */
+.mf{position:relative;width:100%;overflow:hidden;background:#222;container-type:inline-size}
+.mf.r45{aspect-ratio:4/5}.mf.r916{aspect-ratio:9/16}.mf.r11{aspect-ratio:1/1}
+.mf>img,.mf>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.mk{position:absolute;inset:0;display:flex;flex-direction:column;font-family:var(--font);color:#111;overflow:hidden}
+.mk p{margin:0}
+.vidtag{position:absolute;right:6%;top:5%;background:rgba(0,0,0,.55);color:#fff;font-size:max(9px,3.4cqw);padding:.3em .7em;border-radius:99px;font-weight:700;z-index:3}
+.mk-simple{background:#fff;padding:9% 8%;justify-content:center;gap:3%}
+.mk-simple .a{font-weight:800;font-size:9cqw;line-height:1;font-variation-settings:"wdth" 80;text-transform:uppercase}
+.mk-simple .b{font-size:5.4cqw;font-weight:650;line-height:1.15}
+.mk-simple .b:nth-child(2){color:#DD3326;font-weight:800;font-size:7cqw}
+.pill{align-self:flex-start;margin-top:4%;background:#111;color:#fff;font-weight:800;font-size:4.6cqw;padding:.55em 1.1em;border-radius:99px}
+.mk-stacked{background:#0E1622;justify-content:center;padding:6%;gap:2.5%}
+.mk-stacked p{font-weight:800;font-size:6.6cqw;line-height:1.1;padding:.45em .55em;align-self:flex-start;font-variation-settings:"wdth" 85}
+.mk-stacked p:nth-child(4n+1){background:#FFC928}
+.mk-stacked p:nth-child(4n+2){background:#fff}
+.mk-stacked p:nth-child(4n+3){background:#DD3326;color:#fff}
+.mk-stacked p:nth-child(4n+4){background:#3BA3FF;color:#08111d}
+.mk-breaking{background:radial-gradient(120% 80% at 70% 20%,#4A6C8F,#16293C 60%,#0B1620);color:#fff;justify-content:flex-end}
+.mk-breaking .bar{position:absolute;top:7%;left:0;background:#D0201A;font-weight:800;font-size:6.4cqw;padding:.35em .8em .35em 6%;font-variation-settings:"wdth" 75;letter-spacing:.02em}
+.mk-breaking .live{position:absolute;top:7.6%;right:6%;font-size:3.6cqw;font-weight:800;background:#fff;color:#D0201A;padding:.2em .6em}
+.mk-breaking .lt{background:#fff;color:#111;margin:0 0 3%;padding:3% 5%;border-left:2.5cqw solid #D0201A}
+.mk-breaking .lt b{display:block;font-size:7.4cqw;line-height:1.05;font-weight:800;font-variation-settings:"wdth" 80;text-transform:uppercase}
+.mk-breaking .lt span{font-size:4.2cqw;font-weight:600;color:#333}
+.mk-breaking .tick{background:#D0201A;font-weight:700;font-size:4cqw;padding:2.2% 5%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mk-option{background:#F2F5FA;padding:8% 7%;gap:2.5%;justify-content:center}
+.mk-option .q{font-weight:800;font-size:6.8cqw;line-height:1.08;font-variation-settings:"wdth" 85;margin-bottom:3%}
+.mk-option .o{background:#fff;border:.6cqw solid #1E5BD8;color:#1E5BD8;border-radius:2.5cqw;padding:.6em .8em;font-weight:750;font-size:4.8cqw;display:flex;justify-content:space-between}
+.mk-option .o::after{content:"";width:3.6cqw;height:3.6cqw;border:.6cqw solid #1E5BD8;border-radius:50%;flex:none;align-self:center}
+.mk-survey{background:#fff;padding:7%;gap:2.5%}
+.mk-survey .prog{height:2cqw;background:#E5E9F0;border-radius:99px;overflow:hidden;margin-bottom:2%}
+.mk-survey .prog i{display:block;height:100%;width:25%;background:#1C8F60}
+.mk-survey .st{font-size:3.6cqw;color:#666;font-weight:600}
+.mk-survey .q{font-weight:800;font-size:6.6cqw;line-height:1.1;margin:2% 0 3%}
+.mk-survey .o{border:.5cqw solid #CFD6E0;border-radius:2cqw;padding:.65em .8em;font-size:4.6cqw;font-weight:650}
+.mk-survey .nx{margin-top:auto;background:#1C8F60;color:#fff;text-align:center;font-weight:800;font-size:4.8cqw;padding:.7em;border-radius:2cqw}
+.mk-looking{background:#111;color:#fff;padding:9% 8%;justify-content:center;gap:4%}
+.mk-looking .lab{font-weight:800;font-size:5cqw;color:#111;background:#FFC928;align-self:flex-start;padding:.3em .6em;font-variation-settings:"wdth" 75;text-transform:uppercase}
+.mk-looking .w{font-weight:800;font-size:8.4cqw;line-height:1.02;font-variation-settings:"wdth" 80}
+.mk-looking .r{font-size:5.4cqw;font-weight:600;color:#D7DCE4}
+.mk-looking .stamp{align-self:flex-end;transform:rotate(-8deg);border:1cqw solid #DD3326;color:#FF5A4D;font-weight:800;font-size:6cqw;padding:.2em .5em;text-transform:uppercase;font-variation-settings:"wdth" 75}
+.mk-video{background:linear-gradient(170deg,#5B6676,#2A313C 55%,#14181F);color:#fff;align-items:center;justify-content:center;padding:8%}
+.mk-video .who{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:62%;aspect-ratio:1/1.15;background:radial-gradient(circle at 50% 30%,#8B96A6 0 22%,transparent 23%),radial-gradient(ellipse at 50% 105%,#8B96A6 0 48%,transparent 49%);opacity:.55}
+.mk-video .cap{position:relative;z-index:2;text-align:center;display:flex;flex-direction:column;gap:2.5cqw;align-items:center}
+.mk-video .cap span{background:#fff;color:#111;font-weight:800;font-size:5.6cqw;line-height:1.15;padding:.25em .5em;border-radius:1.5cqw}
+.mk-video .cap span:first-child{background:#FFC928}
+.mk-video.lower{justify-content:flex-end}
+.mk-video.lower .cap{margin-bottom:10%}
+.mk-video .lt3{position:absolute;left:6%;bottom:6%;z-index:2;background:#111;padding:.4em .8em;font-weight:700;font-size:4cqw;border-left:1.4cqw solid #FFC928}
+.mk-video .music{position:absolute;left:6%;top:5%;font-size:3.6cqw;font-weight:700;z-index:2;background:rgba(0,0,0,.45);padding:.25em .6em;border-radius:99px}
+.mk-product{background:linear-gradient(160deg,#F7F7F5,#E3E6EA);padding:8%;align-items:center;text-align:center;gap:3%}
+.mk-product .pn{font-weight:800;font-size:7cqw;font-variation-settings:"wdth" 82}
+.mk-product .ph{flex:1;width:58%;background:linear-gradient(180deg,#fff,#cdd3db);border-radius:4cqw;box-shadow:0 3cqw 6cqw rgba(0,0,0,.18);margin:2% 0}
+.mk-product .of{background:#DD3326;color:#fff;font-weight:800;font-size:5.6cqw;padding:.4em .9em;border-radius:99px}
+.mk-question{background:#1E5BD8;color:#fff;padding:9% 8%;justify-content:center;gap:4%}
+.mk-question .qm{font-weight:800;font-size:30cqw;line-height:.8;color:#FFC928;font-variation-settings:"wdth" 70}
+.mk-question .q{font-weight:800;font-size:7.6cqw;line-height:1.08;font-variation-settings:"wdth" 85}
+.mk-question .s{font-size:4.8cqw;font-weight:600;opacity:.9}
+.mk-question .b{align-self:flex-start;background:#fff;color:#1E5BD8;font-weight:800;font-size:4.8cqw;padding:.55em 1em;border-radius:99px}
+.mk-ai{background:linear-gradient(145deg,#2B1B5A,#7A2E8F 55%,#E0585B);color:#fff;padding:9% 8%;justify-content:center;gap:3.5%}
+.mk-ai .a{font-weight:800;font-size:9cqw;line-height:1;font-variation-settings:"wdth" 80}
+.mk-ai .b{font-size:5.6cqw;font-weight:650}
+.mk-ai .c{align-self:flex-start;margin-top:3%;background:#fff;color:#2B1B5A;font-weight:800;font-size:4.8cqw;padding:.55em 1.1em;border-radius:99px}
+.mk-high{background:#F3EEE6;color:#1D1A16;padding:10%;justify-content:center;align-items:center;text-align:center;gap:5%}
+.mk-high::before{content:"";position:absolute;inset:4.5%;border:.35cqw solid #A88B5A}
+.mk-high .a{font-family:Georgia,"Times New Roman",serif;font-size:8.4cqw;line-height:1.1}
+.mk-high .b{font-size:4.4cqw;color:#5E5546;max-width:80%}
+.mk-high .c{font-size:3.6cqw;letter-spacing:.18em;text-transform:uppercase;border-bottom:.35cqw solid #A88B5A;padding-bottom:.3em}
+
+/* ---------- meta ad preview ---------- */
+.ads{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:20px;align-items:start}
+.adwrap{display:flex;flex-direction:column;gap:6px}
+.adwrap .lbl{font-size:12.5px;color:var(--muted);font-weight:650}
+.fb{background:#fff;color:#050505;border-radius:10px;border:1px solid #DADDE1;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px}
+.fb header{display:flex;gap:9px;align-items:center;padding:11px 12px 8px}
+.fb .av{width:36px;height:36px;border-radius:50%;background:#1B2333;color:#FFC928;display:grid;place-items:center;font-weight:800}
+.fb header b{display:block;font-size:14px;line-height:1.2}
+.fb header small{color:#65676B;font-size:12.5px}
+.fb .pt{padding:0 12px 10px;white-space:pre-wrap;line-height:1.34;overflow-wrap:anywhere}
+.fb .more{color:#65676B;font-weight:600;cursor:pointer;background:none;border:0;padding:0}
+.fb .lb{display:flex;align-items:center;gap:10px;background:#F0F2F5;padding:9px 12px}
+.fb .lb div{flex:1;min-width:0}
+.fb .lb small{display:block;color:#65676B;font-size:12px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fb .lb b{display:block;font-size:15px;line-height:1.25;overflow-wrap:anywhere}
+.fb .cta{background:#E4E6EB;border:0;border-radius:6px;padding:8px 12px;font-weight:650;font-size:14px;white-space:nowrap;color:#050505}
+.reel{position:relative;border-radius:14px;overflow:hidden;background:#000;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.reel .ov{position:absolute;left:0;right:0;bottom:0;padding:14px 12px 14px;background:linear-gradient(transparent,rgba(0,0,0,.75) 40%);color:#fff;z-index:4;display:flex;flex-direction:column;gap:7px}
+.reel .ov .who{display:flex;gap:8px;align-items:center;font-weight:700;font-size:13.5px}
+.reel .ov .who i{width:26px;height:26px;border-radius:50%;background:#FFC928;display:inline-block}
+.reel .ov .who small{font-weight:500;opacity:.85}
+.reel .ov p{margin:0;font-size:13px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.reel .ov .cta{background:#fff;color:#111;border:0;border-radius:8px;padding:9px;font-weight:700;font-size:13.5px;display:flex;justify-content:space-between}
+
+/* library */
+.lib-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.lib-head h1{font-size:40px;font-weight:800;font-variation-settings:"wdth" 75}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.card{background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px;cursor:pointer;text-align:left}
+.card:hover{border-color:var(--text)}
+.card h3{font-size:17px;font-weight:750;overflow-wrap:anywhere}
+.card .meta{color:var(--muted);font-size:13px}
+.prog{display:flex;gap:3px}
+.prog i{flex:1;height:5px;border-radius:2px;background:var(--line)}
+.prog i.on{background:var(--text)}
+.res{font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;align-self:flex-start}
+.res.draft{background:var(--soft);color:var(--muted)}
+.res.untested{background:#E6EEFF;color:#1E4FB8}
+.res.testing{background:#FFF1C7;color:#7A5600}
+.res.winner{background:#D7F3E5;color:#0F6B45}
+.res.loser{background:#FDE2DF;color:#A1261C}
+.libtabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.notice{background:var(--soft);border-left:4px solid var(--signal);padding:10px 14px;border-radius:6px;font-size:14px;color:var(--text)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--text);color:var(--paper);padding:10px 16px;border-radius:8px;font-weight:600;font-size:14px;z-index:50;max-width:min(90vw,520px)}
+.foot{display:flex;justify-content:space-between;gap:10px;margin-top:32px;padding-top:18px;border-top:1.5px solid var(--line)}
+.hide{display:none!important}
+
+@media (max-width:900px){
+  .split{grid-template-columns:1fr}
+  .sticky{position:static}
+  .grid3{grid-template-columns:1fr 1fr}
+}
+@media (max-width:760px){
+  .editor{grid-template-columns:1fr}
+  .rail{padding:10px 8px;overflow-x:auto}
+  .rail .bt,.rail .bc{display:none}
+  .steps{display:flex;gap:4px}
+  .steps li button{grid-template-columns:28px auto;white-space:nowrap;align-items:center}
+  .steps small{display:none}
+  .grid2,.grid3{grid-template-columns:1fr}
+  .stephead h1{font-size:27px}.stephead .num{font-size:36px}
+  .top{padding:10px 12px;gap:10px}.brand span{display:none}
+  .save{display:none}
+}
+</style>
 </head>
 <body>
-  <!-- Placeholder: replace this file with the team's HTML. -->
+<div class="top">
+  <div class="brand"><i></i><span>Ad Brief Builder</span></div>
+  <nav>
+    <button data-a="nav" data-v="briefs" id="nb">Briefs</button>
+    <button data-a="nav" data-v="libs" id="nl">Libraries</button>
+  </nav>
+  <div class="spacer"></div>
+  <span class="save" id="save"></span>
+</div>
+<div id="root"></div>
+<div id="toast" class="toast hide" role="status" aria-live="polite"></div>
+
+<script>
+const NOTION_URL = "https://scalblio.notion.site/Creative-Templates-For-Owenski-3f924f67814f80e9ad16de58420c9035";
+const STEPS = [
+  {key:"brief", name:"Client brief", hint:"Who the client is and what we're selling"},
+  {key:"copy", name:"Ad copy", hint:"Pick reference ads, generate primary text"},
+  {key:"headlines", name:"Headlines", hint:"Short lines that sit under the creative"},
+  {key:"creative", name:"Creative template", hint:"Pick a format, get the build prompt"},
+  {key:"ugc", name:"UGC prompt", hint:"Script and prompt for the video tool"},
+  {key:"capcut", name:"CapCut edit", hint:"Scene-by-scene edit plan"},
+  {key:"preview", name:"Preview & publish", hint:"See the ads, publish the brief"}
+];
+const CTAS = ["Learn more","Sign up","Get quote","Apply now","Book now","Download","Contact us","Get offer","Shop now"];
+const TOOLS = ["Higgsfield","Canva","ChatGPT Images","Ideogram","DaVinci Resolve","CapCut","Film on phone"];
+const DEMO = {
+  simple:["Homeowners","Lower bills, sooner","Check what you qualify for","Takes 60 seconds","Learn more"],
+  stacked:["Own a home?","Paying too much?","Free 60-second check","Tap learn more"],
+  breaking:["Breaking news","Locals rushing to check new rebate","Applications open now"],
+  option:["Which best describes you?","First home buyer","Upgrading","Investing"],
+  survey:["Do you own your home?","Yes, I own it","Paying it off","Renting"],
+  lookingfor:["We're looking for","20 local homeowners","To get results in 30 days","Or don't pay"],
+  wilco:["Blocked drain again?","There's a no-dig fix","Book a free check"],
+  product:["Hero product","Free bonus when you buy"],
+  silentugc:["POV: you found the fix","No digging. No mess.","Link below"],
+  question:["Are you paying too much?","Take the 30-second quiz","Start quiz"],
+  inperson:["Here's what most people miss","Jane, Founder"],
+  direct:["Hey homeowners","If you're looking for a better rate…"],
+  aicallout:["Attention homeowners","Big savings available","Check now"],
+  highclass:["Considered living","Space, light and a better return","Enquire"]
+};
+
+let db=null, sample=null, userCap=null, assets=null, downloads=null, uid=null;
+let L = {copy:[], headlines:[], templates:[]};
+let briefs = [];
+const names = {};
+const S = {view:"briefs", step:0, brief:null, briefId:null, filter:"all", libTab:"copy", busy:{}, confirmDel:null};
+
+/* ---------- utils ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uidGen = () => Math.random().toString(36).slice(2,10);
+function getPath(o,p){return p.split(".").reduce((a,k)=>a==null?a:a[k],o)}
+function setPath(o,p,v){const k=p.split(".");let c=o;for(let i=0;i<k.length-1;i++){if(c[k[i]]==null)c[k[i]]=/^\d+$/.test(k[i+1])?[]:{};c=c[k[i]]}c[k[k.length-1]]=v}
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.remove("hide");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add("hide"),3200)}
+function fmtDate(ms){if(!ms)return"";const d=new Date(ms);return d.toLocaleDateString("en-AU",{day:"numeric",month:"short"})+", "+d.toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"})}
+function domainOf(u){try{return new URL(/^https?:/.test(u)?u:"https://"+u).hostname.replace(/^www\./,"")}catch{return u||"yourwebsite.com.au"}}
+function tplById(id){return L.templates.find(t=>t.id===id)}
+
+function newBrief(){
+  return {title:"",client:"",offer:"",audience:"",location:"",benefits:"",info:"",url:"",cta:"Learn more",tone:"",
+    copyRefs:[],nCopy:3,copyVariants:[],hlRefs:[],nHl:8,headlines:[],
+    templateId:null,tool:"",creative:null,
+    ugc:{presenter:"",setting:"",format:"Silent UGC: captions + music (format 1)",length:"30 seconds",tool:"Higgsfield",out:null},
+    capcut:{aspect:"9:16",captions:"",music:"",out:null},
+    pick:{copy:[0],headlines:[0]},format:"feed",asset:null,
+    status:"draft",result:"untested",notes:"",createdBy:uid||null,createdAt:Date.now(),updatedAt:Date.now()};
+}
+function stepDone(b,i){
+  switch(STEPS[i].key){
+    case"brief":return !!(b.client&&b.offer);
+    case"copy":return (b.copyVariants||[]).length>0;
+    case"headlines":return (b.headlines||[]).length>0;
+    case"creative":return !!b.templateId;
+    case"ugc":return !!(b.ugc&&b.ugc.out);
+    case"capcut":return !!(b.capcut&&b.capcut.out);
+    case"preview":return b.status==="published";
+  }
+}
+
+/* ---------- saving ---------- */
+let saveT=null, saving=false, again=false;
+function setSave(t){$("#save").textContent=t}
+function scheduleSave(){if(!S.brief)return;setSave(db?"Unsaved changes":"Not saved: sign in to keep briefs");clearTimeout(saveT);saveT=setTimeout(saveNow,900)}
+async function saveNow(){
+  clearTimeout(saveT);
+  if(!db||!S.brief||!S.briefId)return;
+  if(saving){again=true;return}
+  saving=true;setSave("Saving…");
+  S.brief.updatedAt=Date.now();
+  try{await db.doc("briefs/"+S.briefId).set(JSON.parse(JSON.stringify(S.brief)));setSave("Saved")}
+  catch(e){setSave(e.code==="invalid_argument"?"View-only: changes aren't saved":"Couldn't save, retrying");if(e.code==="unavailable")setTimeout(saveNow,1500+Math.random()*1000)}
+  saving=false;if(again){again=false;saveNow()}
+}
+
+/* ---------- AI ---------- */
+function briefText(b){
+  return [
+    ["Client / brand",b.client],["The offer",b.offer],["Who it's for",b.audience],["Location / area",b.location],
+    ["Big benefits / crazy hooks",b.benefits],["Important info / compliance / things we must not say",b.info],
+    ["Landing page",b.url],["Button CTA",b.cta],["Tone notes",b.tone]
+  ].filter(x=>x[1]).map(x=>x[0]+": "+x[1]).join("\n");
+}
+function errCopy(c){
+  return ({not_granted:"Claude access wasn't allowed for this page. Allow it in the artifact's permissions to generate.",
+    rate_limited:"Too many requests at once. Wait a minute, then try again.",
+    images_unavailable:"Images can't be sent from here."})[c]||"Generation didn't finish. Try again.";
+}
+async function ai(key,prompt,done){
+  if(!sample){toast("AI generation isn't available in this view. You can still write everything by hand.");return}
+  if(!S.brief.offer&&!S.brief.client){toast("Fill in the client brief first so the AI has something to work from.");S.step=0;render();return}
+  const ctl=new AbortController();S.busy[key]=ctl;render();
+  try{const data=await sample.json(prompt,{signal:ctl.signal,modelTier:"default",cache:false});done(data);scheduleSave()}
+  catch(e){if(e&&e.code!=="cancelled")toast(errCopy(e&&e.code))}
+  finally{delete S.busy[key];render()}
+}
+const busyUI=(key,label)=>S.busy[key]?`<div class="thinking"><span class="dots"><i></i><i></i><i></i></span>${label}<button class="btn ghost" data-a="stop" data-k="${key}">Stop</button></div>`:"";
+
+function copyPrompt(n,refs){
+  const b=S.brief;
+  const ex=refs.map((r,i)=>`#${i+1} (${r.title})\n${r.text}`).join("\n\n");
+  return `You write Meta (Facebook/Instagram) ad primary text for an Australian performance marketing agency.
+
+Please create ${n} ad copy variant${n>1?"s":""} for:
+${briefText(b)}
+
+Using the ad copy examples below.
+NOTE: Copy the style, flow, formatting and structure. Do not copy the actual content as it relates to the offer or product. The offer or product is already stated above.
+
+Rules:
+- Each variant follows the structure of a different example (cycle through them in order). Match that example's emoji use, line breaks, capitalisation, length and CTA style.
+- Australian spelling.
+- Never invent statistics, prices, rebates, guarantees, client names or results that are not in the brief. If an example's structure relies on a number or proof point the brief doesn't give, write around it.
+- Respect anything listed under important info / compliance.
+- End with a CTA that matches the button: "${b.cta}".
+
+EXAMPLES:
+${ex}
+
+Return only JSON, no commentary: {"variants":[{"basedOn":"<example title>","text":"<full ad copy, use \\n for line breaks>"}]}`;
+}
+function hlPrompt(n){
+  const b=S.brief;
+  const refs=(b.hlRefs.length?L.headlines.filter(h=>b.hlRefs.includes(h.id)):L.headlines);
+  const copy=(b.copyVariants||[]).slice(0,2).map(v=>v.text).join("\n---\n");
+  return `You write Meta ad headlines (the bold line under the image/video, beside the CTA button) for an Australian performance marketing agency.
+
+Brief:
+${briefText(b)}
+
+${copy?"Ad copy these will run with:\n"+copy+"\n":""}
+Proven headlines to model (copy their patterns, punctuation and punch, not their content):
+${refs.map(h=>"- "+h.text).join("\n")}
+
+Write ${n} headlines. Each under 40 characters where possible (hard max 60). Mix angles: audience callout, question, benefit, curiosity, offer/urgency. Australian spelling. No invented numbers or claims beyond the brief.
+
+Return only JSON: {"headlines":[{"text":"","angle":"<2-4 word angle>"}]}`;
+}
+function creativePrompt(t){
+  const b=S.brief;
+  const copy=(b.copyVariants[0]||{}).text||"";
+  const hl=(b.headlines[0]||{}).text||"";
+  return `You are the creative lead at an Australian performance ad agency. Turn this brief into a ready-to-build Meta ad creative using a specific template.
+
+Brief:
+${briefText(b)}
+
+Primary text it runs with:
+${copy}
+
+Headline: ${hl}
+
+Template: ${t.name} (${t.kind})
+Template structure (one on-screen element per item, in order):
+${(t.structure||[]).map((s,i)=>(i+1)+". "+s).join("\n")}
+Template notes: ${t.description||"-"}
+
+Build tool: ${b.tool||t.tool}
+
+Return only JSON:
+{"lines":["<on-screen text for each structure item, in order. Short and punchy, max ~8 words each>"],
+ "visual":"<art direction: background, imagery, colours, layout, mood. 2-4 sentences>",
+ "prompt":"<one ready-to-paste prompt written for ${b.tool||t.tool}. For image/video AI tools describe the full scene, style, aspect ratio (${t.kind==="video"?"9:16":"4:5"}) and any text to render exactly in quotes. For Canva/DaVinci/CapCut write precise build instructions instead.>",
+ "steps":["<3-6 short steps to build it in ${b.tool||t.tool}>"]}`;
+}
+function ugcPrompt(){
+  const b=S.brief,u=b.ugc,t=tplById(b.templateId);
+  return `Write a UGC-style Meta video ad for an Australian performance ad agency, plus a prompt for the AI video tool.
+
+Brief:
+${briefText(b)}
+
+Primary text: ${(b.copyVariants[0]||{}).text||"-"}
+Headline: ${(b.headlines[0]||{}).text||"-"}
+Creative template: ${t?t.name+" - "+(t.structure||[]).join(" / "):"none chosen"}
+
+Presenter: ${u.presenter||"pick a believable everyday Australian matching the audience"}
+Setting: ${u.setting||"pick a natural, relevant location"}
+Format: ${u.format}
+Length: ${u.length}
+Video tool: ${u.tool}
+
+Formats explained:
+- Silent UGC format 1: call out audience > explain the solution > extra aspect > CTA. No talking; on-screen captions + music.
+- Silent UGC format 2: call out audience > don't do the usual method > do this instead > here's why it's good > CTA. No talking; captions + music.
+- Talking to camera: presenter speaks naturally, phone-shot feel.
+- Voiceover + b-roll: narration over footage.
+
+Hook in the first 2 seconds. No invented stats or claims beyond the brief. Australian spelling and natural Aussie phrasing.
+
+Return only JSON:
+{"script":[{"time":"0-3s","say":"<spoken line, empty string if silent>","onScreen":"<caption/on-screen text>","shot":"<what we see>"}],
+ "prompt":"<single ready-to-paste prompt for ${u.tool}: presenter look, wardrobe, setting, camera (handheld phone, vertical 9:16), lighting, actions per beat, and dialogue in quotes if spoken>",
+ "tips":["<2-4 practical tips to get a good result>"]}`;
+}
+function capcutPrompt(){
+  const b=S.brief,c=b.capcut,t=tplById(b.templateId),u=b.ugc.out;
+  return `Create a CapCut edit plan for a Meta ad so a junior editor can build it fast.
+
+Brief:
+${briefText(b)}
+Headline: ${(b.headlines[0]||{}).text||"-"}
+Creative template: ${t?t.name+" - "+(t.structure||[]).join(" / "):"none"}
+${u?"Script:\n"+u.script.map(s=>`${s.time} | say: ${s.say||"-"} | on screen: ${s.onScreen||"-"} | shot: ${s.shot||"-"}`).join("\n"):""}
+
+Aspect ratio: ${c.aspect}
+Caption look wanted: ${c.captions||"bold, high-contrast, readable on mute"}
+Music vibe: ${c.music||"pick something fitting, upbeat but not distracting"}
+
+Return only JSON:
+{"length":"<total seconds>",
+ "timeline":[{"time":"0-2s","visual":"<clip/footage>","caption":"<exact on-screen text>","edit":"<cut, zoom, transition, sound fx>"}],
+ "captionStyle":"<font weight, colours, position, animation, safe zones for Reels>",
+ "music":"<vibe, tempo, where to search in CapCut's library>",
+ "searchTerms":["<4-6 CapCut template search terms>"],
+ "export":"<resolution, frame rate, aspect>"}`;
+}
+
+/* ---------- mocks ---------- */
+function mock(style,lines,ratio){
+  const l=(lines||[]).filter(x=>String(x).trim());
+  const g=i=>esc(l[i]||""), rest=f=>l.slice(f).map(esc);
+  const vid=["wilco","silentugc","inperson","direct"].includes(style);
+  let h="";
+  switch(style){
+    case"simple":h=`<div class="mk mk-simple">${l.slice(0,Math.max(1,l.length-1)).map((x,i)=>`<p class="${i?"b":"a"}">${esc(x)}</p>`).join("")}${l.length>1?`<span class="pill">${g(l.length-1)}</span>`:""}</div>`;break;
+    case"stacked":h=`<div class="mk mk-stacked">${l.map(x=>`<p>${esc(x)}</p>`).join("")}</div>`;break;
+    case"breaking":h=`<div class="mk mk-breaking"><span class="bar">BREAKING NEWS</span><span class="live">LIVE</span><div class="lt"><b>${g(1)||g(0)}</b>${l[2]?`<span>${g(2)}</span>`:""}</div><div class="tick">${rest(3).join("  •  ")||g(0)}</div></div>`;break;
+    case"option":h=`<div class="mk mk-option"><p class="q">${g(0)}</p>${rest(1).map(x=>`<span class="o">${x}</span>`).join("")}</div>`;break;
+    case"survey":h=`<div class="mk mk-survey"><div class="prog"><i></i></div><span class="st">Question 1 of 4</span><p class="q">${g(0)}</p>${rest(1).slice(0,4).map(x=>`<span class="o">${x}</span>`).join("")}<span class="nx">Next</span></div>`;break;
+    case"lookingfor":h=`<div class="mk mk-looking"><span class="lab">${g(0)||"We're looking for"}</span><p class="w">${g(1)}</p><p class="r">${g(2)}</p>${l[3]?`<span class="stamp">${g(3)}</span>`:""}</div>`;break;
+    case"product":h=`<div class="mk mk-product"><p class="pn">${g(0)}</p><div class="ph"></div>${l[1]?`<span class="of">${g(1)}</span>`:""}</div>`;break;
+    case"question":h=`<div class="mk mk-question"><span class="qm">?</span><p class="q">${g(0)}</p>${l[1]?`<p class="s">${g(1)}</p>`:""}<span class="b">${g(2)||"Take the quiz"}</span></div>`;break;
+    case"aicallout":h=`<div class="mk mk-ai"><p class="a">${g(0)}</p>${rest(1).slice(0,-1).map(x=>`<p class="b">${x}</p>`).join("")}${l.length>1?`<span class="c">${g(l.length-1)}</span>`:""}</div>`;break;
+    case"highclass":h=`<div class="mk mk-high"><p class="a">${g(0)}</p>${l[1]?`<p class="b">${g(1)}</p>`:""}${l[2]?`<span class="c">${g(2)}</span>`:""}</div>`;break;
+    case"inperson":h=`<div class="mk mk-video lower"><div class="who"></div><div class="cap"><span>${g(0)}</span></div>${l[1]?`<div class="lt3">${g(1)}</div>`:""}</div>`;break;
+    case"direct":h=`<div class="mk mk-video lower"><div class="who"></div><div class="cap">${l.slice(0,2).map(x=>`<span>${esc(x)}</span>`).join("")}</div></div>`;break;
+    case"silentugc":h=`<div class="mk mk-video"><div class="who"></div><span class="music">♪ trending audio</span><div class="cap">${l.slice(0,3).map(x=>`<span>${esc(x)}</span>`).join("")}</div></div>`;break;
+    default:h=`<div class="mk mk-video"><div class="who"></div><div class="cap">${l.slice(0,3).map(x=>`<span>${esc(x)}</span>`).join("")}</div></div>`;
+  }
+  return `<div class="mf ${ratio||"r45"}">${h}${vid?'<span class="vidtag">▶ Video</span>':""}</div>`;
+}
+
+/* ---------- render ---------- */
+function render(){
+  $("#nb").setAttribute("aria-current",S.view!=="libs");
+  $("#nl").setAttribute("aria-current",S.view==="libs");
+  if(S.view!=="editor")setSave("");
+  const root=$("#root");
+  if(S.view==="libs"){root.innerHTML=`<main class="pane" style="margin:0 auto">${viewLibs()}</main>`;return}
+  if(S.view==="briefs"){root.innerHTML=`<main class="pane" style="margin:0 auto">${viewBriefs()}</main>`;resolveNames();return}
+  const b=S.brief;
+  root.innerHTML=`<div class="editor">
+    <aside class="rail"><div class="bt">${esc(b.title||b.client||"Untitled brief")}</div><div class="bc">${b.status==="published"?"Published":"Draft"}</div>
+      <ol class="steps">${STEPS.map((s,i)=>`<li class="${i===S.step?"cur":""} ${stepDone(b,i)?"done":""}"><button data-a="step" data-i="${i}" ${i===S.step?'aria-current="step"':""}><span class="n">${stepDone(b,i)&&i!==S.step?"✓":i+1}</span><span><b>${s.name}</b><small>${s.hint}</small></span></button></li>`).join("")}</ol>
+    </aside>
+    <main class="pane">${[stepBrief,stepCopy,stepHeadlines,stepCreative,stepUgc,stepCapcut,stepPreview][S.step]()}
+      <div class="foot">${S.step>0?`<button class="btn" data-a="step" data-i="${S.step-1}">Back</button>`:`<button class="btn" data-a="nav" data-v="briefs">All briefs</button>`}
+      ${S.step<STEPS.length-1?`<button class="btn dark" data-a="step" data-i="${S.step+1}">Next: ${STEPS[S.step+1].name}</button>`:""}</div>
+    </main></div>`;
+}
+const head=(i,lede)=>`<div class="stephead"><span class="num">${i+1}</span><h1>${STEPS[i].name}</h1></div><p class="lede">${lede}</p>`;
+function fld(label,f,o={}){
+  const v=getPath(S.brief,f)??"";
+  let ctl;
+  if(o.opts)ctl=`<select data-f="${f}">${o.opts.map(x=>`<option ${x===v?"selected":""}>${esc(x)}</option>`).join("")}</select>`;
+  else if(o.area)ctl=`<textarea data-f="${f}" rows="${o.rows||3}" placeholder="${esc(o.ph||"")}">${esc(v)}</textarea>`;
+  else ctl=`<input data-f="${f}" value="${esc(v)}" placeholder="${esc(o.ph||"")}">`;
+  return `<label class="fld ${o.cls||""}"><span>${label}</span>${ctl}${o.help?`<small>${o.help}</small>`:""}</label>`;
+}
+
+function stepBrief(){
+  return head(0,"Everything downstream is written from this, so be specific: the real offer, the real audience and anything we can't say.")+
+  `<div class="grid2">
+    ${fld("Brief name","title",{ph:"e.g. Unitree – business loans, Oct",help:"How it shows in the brief library."})}
+    ${fld("Client / Facebook page name","client",{ph:"e.g. Fincheck"})}
+    ${fld("What the offer is","offer",{area:1,cls:"span2",ph:"e.g. Free tool to check business loan options in minutes, no credit score impact"})}
+    ${fld("Who it's for","audience",{area:1,ph:"e.g. Australian business owners 2+ years trading, turnover $250k+"})}
+    ${fld("Location / area","location",{area:1,ph:"e.g. Australia-wide, or Sydney metro"})}
+    ${fld("Crazy benefits and hooks","benefits",{area:1,rows:4,ph:"Rebates, guarantees, speed, price, free bonuses – the stuff that stops the scroll"})}
+    ${fld("Important info and compliance","info",{area:1,rows:4,ph:"Must-say disclaimers, claims we can't make, eligibility rules"})}
+    ${fld("Landing page URL","url",{ph:"https://client.scalbl.io/"})}
+    ${fld("CTA button","cta",{opts:CTAS})}
+    ${fld("Tone notes","tone",{cls:"span2",ph:"e.g. urgent and direct, or premium and calm"})}
+  </div>`;
+}
+
+function stepCopy(){
+  const b=S.brief;
+  const sel=id=>!b.copyRefs.length||b.copyRefs.includes(id);
+  return head(1,"Tick the reference ads to model. The AI copies their style, flow and structure, not their content.")+
+  `<div class="split"><div class="sticky stack">
+    <div class="panel"><div class="row between"><h2>Reference ad copy</h2><button class="btn ghost" data-a="nav" data-v="libs">Edit library</button></div>
+      <p class="sub">${L.copy.length?(b.copyRefs.length||L.copy.length)+" of "+L.copy.length+" selected. Open one to read it.":"No reference copy yet."}</p>
+      ${L.copy.length?L.copy.map(r=>`<details class="ref"><summary><input type="checkbox" data-a="copyref" data-id="${r.id}" ${sel(r.id)?"checked":""} aria-label="Use ${esc(r.title)}"><b>${esc(r.title)}</b><span class="tw">${r.text.split(/\s+/).length} words</span></summary><pre>${esc(r.text)}</pre></details>`).join(""):`<div class="empty"><b>Add reference ads</b>Paste proven ad copy in Libraries to model from.</div>`}
+    </div>
+    <div class="panel row"><label class="fld" style="flex:1"><span>Variants to write</span><select data-f="nCopy" data-num="1">${[1,2,3,4,5,6].map(n=>`<option ${n==b.nCopy?"selected":""}>${n}</option>`).join("")}</select></label>
+      <button class="btn primary" data-a="gencopy" ${S.busy.copy?"disabled":""} style="align-self:flex-end">Generate ad copy</button></div>
+  </div>
+  <div class="stack">
+    ${busyUI("copy","Writing ad copy…")}
+    ${b.copyVariants.length?b.copyVariants.map((v,i)=>`<div class="variant"><header><b>Variant ${String.fromCharCode(65+i)}</b><span class="tag">${v.basedOn?"Modelled on "+esc(v.basedOn):"Written by hand"}</span><span style="flex:1"></span>
+      ${v.basedOn?`<button class="btn ghost" data-a="regencopy" data-i="${i}" ${S.busy["c"+i]?"disabled":""}>${S.busy["c"+i]?"Rewriting…":"Rewrite"}</button>`:""}
+      <button class="btn ghost" data-a="copytext" data-src="cv${i}">Copy</button><button class="btn ghost danger" data-a="delcopy" data-i="${i}">Delete</button></header>
+      <textarea id="cv${i}" data-f="copyVariants.${i}.text" rows="10">${esc(v.text)}</textarea></div>`).join("")
+      :(!S.busy.copy?`<div class="empty"><b>No ad copy yet</b>Generate variants from the references, or write your own.</div>`:"")}
+    <div><button class="btn" data-a="addcopy">Add a blank variant</button></div>
+  </div></div>`;
+}
+
+function stepHeadlines(){
+  const b=S.brief;
+  const sel=id=>!b.hlRefs.length||b.hlRefs.includes(id);
+  return head(2,"Headlines sit in bold under the creative. Aim for under 40 characters so they don't truncate on mobile.")+
+  `<div class="split"><div class="sticky stack">
+    <div class="panel"><div class="row between"><h2>Proven headlines</h2><button class="btn ghost" data-a="nav" data-v="libs" data-t="headlines">Edit library</button></div>
+      <p class="sub">Tap to include or leave out as a pattern to model.</p>
+      <div class="row">${L.headlines.length?L.headlines.map(h=>`<button class="chip" data-a="hlref" data-id="${h.id}" aria-pressed="${sel(h.id)}">${esc(h.text)}</button>`).join(""):`<div class="empty" style="width:100%"><b>No headline examples yet</b>Add your proven headlines in Libraries.</div>`}</div>
+    </div>
+    <div class="panel row"><label class="fld" style="flex:1"><span>Headlines to write</span><select data-f="nHl" data-num="1">${[5,8,10,15].map(n=>`<option ${n==b.nHl?"selected":""}>${n}</option>`).join("")}</select></label>
+      <button class="btn primary" data-a="genhl" ${S.busy.hl?"disabled":""} style="align-self:flex-end">Generate headlines</button></div>
+  </div>
+  <div class="panel stack">
+    <h2>This brief's headlines</h2>
+    ${busyUI("hl","Writing headlines…")}
+    ${b.headlines.length?b.headlines.map((h,i)=>`<div class="hlrow"><input data-f="headlines.${i}.text" data-count="hc${i}" value="${esc(h.text)}" aria-label="Headline ${i+1}"><span class="count ${h.text.length>40?"over":""}" id="hc${i}">${h.text.length}/40</span><button class="btn ghost danger" data-a="delhl" data-i="${i}" aria-label="Delete headline">✕</button>${h.angle?`<small>${esc(h.angle)}</small>`:""}</div>`).join(""):(!S.busy.hl?`<div class="empty"><b>No headlines yet</b>Generate a batch, then keep the best.</div>`:"")}
+    <div><button class="btn" data-a="addhl">Add a headline</button></div>
+  </div></div>`;
+}
+
+function stepCreative(){
+  const b=S.brief,t=tplById(b.templateId),c=b.creative;
+  return head(3,"Pick the creative format. You'll get the on-screen text, art direction and a prompt to paste into the build tool.")+
+  `<div class="row between" style="margin-bottom:12px"><span class="sub" style="color:var(--muted)">${L.templates.length} templates</span><a class="btn ghost" href="${NOTION_URL}" target="_blank" rel="noopener">See the real examples in Notion</a></div>
+  ${L.templates.length?`<div class="tpls">${L.templates.map(x=>`<button class="tpl" data-a="picktpl" data-id="${x.id}" aria-pressed="${x.id===b.templateId}">${mock(x.style,DEMO[x.style]||x.structure,"r45")}<b>${esc(x.name)}</b><span class="kind ${x.kind}">${x.kind==="video"?"Video":"Static"}</span></button>`).join("")}</div>`:`<div class="empty"><b>No templates yet</b>Add creative templates in Libraries.</div>`}
+  ${t?`<div class="split" style="margin-top:24px"><div class="panel stack">
+      <div><h2>${esc(t.name)}</h2>${t.description?`<p class="sub" style="margin:4px 0 0">${esc(t.description)}</p>`:""}</div>
+      <div><b style="font-size:14px">Structure</b><ol class="struct">${(t.structure||[]).map(s=>`<li>${esc(s)}</li>`).join("")}</ol></div>
+      <label class="fld"><span>Build it in</span><select data-f="tool">${TOOLS.map(x=>`<option ${(b.tool||t.tool)===x?"selected":""}>${x}</option>`).join("")}</select><small>Suggested for this template: ${esc(t.tool||"-")}</small></label>
+      <button class="btn primary" data-a="gencreative" ${S.busy.cr?"disabled":""}>Generate creative brief</button>
+      ${busyUI("cr","Working out the creative…")}
+    </div>
+    <div class="stack">${c?`
+      <div class="panel stack"><h2>On-screen text</h2><p class="sub" style="margin:0">One line per structure item. Edit freely; the preview updates.</p>
+        <textarea data-f="creative.linesText" data-rerender="mock" rows="${Math.max(4,(c.linesText||"").split("\n").length+1)}">${esc(c.linesText)}</textarea>
+        <div id="crmock" style="max-width:300px">${mock(t.style,(c.linesText||"").split("\n"),t.kind==="video"?"r916":"r45")}</div></div>
+      <div class="panel stack"><h2>Art direction</h2><textarea data-f="creative.visual" rows="4">${esc(c.visual)}</textarea></div>
+      <div class="panel stack"><div class="row between"><h2>Prompt for ${esc(b.tool||t.tool)}</h2><button class="btn" data-a="copytext" data-src="crp">Copy prompt</button></div><textarea id="crp" data-f="creative.prompt" rows="8">${esc(c.prompt)}</textarea></div>
+      ${(c.steps||[]).length?`<div class="panel"><h2>Build steps</h2><ol class="struct">${c.steps.map(s=>`<li>${esc(s)}</li>`).join("")}</ol></div>`:""}`
+      :`<div class="empty"><b>Ready when you are</b>Generate the creative brief to get on-screen text and a prompt for ${esc(b.tool||t.tool)}.</div>`}</div></div>`:""}`;
+}
+
+function stepUgc(){
+  const b=S.brief,u=b.ugc,t=tplById(b.templateId),o=u.out;
+  return head(4,"Build the script and a single prompt to paste into your AI video tool.")+
+  (t&&t.kind==="static"?`<p class="notice">You picked a static template (${esc(t.name)}). Skip this step unless you're also making a video version.</p><br>`:"")+
+  `<div class="split"><div class="panel stack sticky">
+      ${fld("Presenter","ugc.presenter",{area:1,ph:"e.g. Aussie tradie, mid-40s, hi-vis, friendly"})}
+      ${fld("Setting","ugc.setting",{area:1,ph:"e.g. Suburban backyard, afternoon light"})}
+      ${fld("Format","ugc.format",{opts:["Silent UGC: captions + music (format 1)","Silent UGC: captions + music (format 2)","Talking to camera","Voiceover + b-roll"]})}
+      <div class="grid2">${fld("Length","ugc.length",{opts:["15 seconds","30 seconds","45 seconds","60 seconds"]})}${fld("Video tool","ugc.tool",{opts:TOOLS})}</div>
+      <button class="btn primary" data-a="genugc" ${S.busy.ugc?"disabled":""}>Generate UGC prompt</button>
+      ${busyUI("ugc","Writing the script…")}
+    </div>
+    <div class="stack">${o?`
+      <div class="panel"><h2>Script</h2><div class="scroll"><table class="tbl"><thead><tr><th>Time</th><th>Said</th><th>On screen</th><th>Shot</th></tr></thead><tbody>
+      ${(o.script||[]).map(s=>`<tr><td>${esc(s.time)}</td><td>${esc(s.say||"–")}</td><td>${esc(s.onScreen||"–")}</td><td>${esc(s.shot||"")}</td></tr>`).join("")}</tbody></table></div></div>
+      <div class="panel stack"><div class="row between"><h2>Prompt for ${esc(u.tool)}</h2><button class="btn" data-a="copytext" data-src="ugp">Copy prompt</button></div><textarea id="ugp" data-f="ugc.out.prompt" rows="10">${esc(o.prompt)}</textarea></div>
+      ${(o.tips||[]).length?`<div class="panel"><h2>Tips</h2><ol class="struct">${o.tips.map(x=>`<li>${esc(x)}</li>`).join("")}</ol></div>`:""}`
+      :`<div class="empty"><b>No script yet</b>Set the presenter and format, then generate.</div>`}</div></div>`;
+}
+
+function stepCapcut(){
+  const b=S.brief,c=b.capcut,o=c.out;
+  return head(5,"A scene-by-scene plan the editor can follow in CapCut, with caption styling and template search terms.")+
+  `<div class="split"><div class="panel stack sticky">
+      ${fld("Aspect ratio","capcut.aspect",{opts:["9:16","4:5","1:1"]})}
+      ${fld("Caption look","capcut.captions",{ph:"e.g. Bold white, yellow highlight on key words"})}
+      ${fld("Music vibe","capcut.music",{ph:"e.g. Upbeat, trending, low under captions"})}
+      <button class="btn primary" data-a="gencap" ${S.busy.cap?"disabled":""}>Generate edit plan</button>
+      ${busyUI("cap","Planning the edit…")}
+    </div>
+    <div class="stack">${o?`
+      <div class="panel"><div class="row between"><h2>Timeline${o.length?" · "+esc(o.length):""}</h2><button class="btn" data-a="copyplan">Copy plan</button></div>
+        <div class="scroll"><table class="tbl"><thead><tr><th>Time</th><th>Visual</th><th>Caption</th><th>Edit</th></tr></thead><tbody>
+        ${(o.timeline||[]).map(s=>`<tr><td>${esc(s.time)}</td><td>${esc(s.visual)}</td><td><b>${esc(s.caption||"–")}</b></td><td>${esc(s.edit||"")}</td></tr>`).join("")}</tbody></table></div></div>
+      <div class="grid2"><div class="out"><h3>Caption style</h3>${esc(o.captionStyle)}</div><div class="out"><h3>Music</h3>${esc(o.music)}</div>
+      <div class="out"><h3>Search CapCut templates for</h3><div class="row">${(o.searchTerms||[]).map(x=>`<span class="chip">${esc(x)}</span>`).join("")}</div></div><div class="out"><h3>Export</h3>${esc(o.export)}</div></div>`
+      :`<div class="empty"><b>No edit plan yet</b>${b.ugc.out?"It'll use your UGC script.":"Tip: generate the UGC script first and the plan will follow it."}</div>`}</div></div>`;
+}
+
+function combos(){
+  const b=S.brief;
+  const cs=(b.pick.copy||[]).filter(i=>b.copyVariants[i]);
+  const hs=(b.pick.headlines||[]).filter(i=>b.headlines[i]);
+  const C=cs.length?cs:(b.copyVariants.length?[0]:[null]);
+  const H=hs.length?hs:(b.headlines.length?[0]:[null]);
+  const out=[];C.forEach(c=>H.forEach(h=>out.push({c,h})));return out.slice(0,12);
+}
+function adCard(c,h,k){
+  const b=S.brief,t=tplById(b.templateId);
+  const text=c==null?"Your ad copy will appear here.":b.copyVariants[c].text;
+  const hl=h==null?"Your headline":b.headlines[h].text;
+  const lines=b.creative&&b.creative.linesText?b.creative.linesText.split("\n"):(t?DEMO[t.style]:["Pick a creative template"]);
+  const reels=b.format==="reels";
+  const media=b.asset?(b.asset.type.startsWith("video")?`<div class="mf ${reels?"r916":"r45"}"><video src="${esc(b.asset.url)}" muted loop playsinline controls></video></div>`:`<div class="mf ${reels?"r916":"r45"}"><img src="${esc(b.asset.url)}" alt="Uploaded creative"></div>`):mock(t?t.style:"simple",lines,reels?"r916":"r45");
+  const name=esc(b.client||"Page name"), init=esc((b.client||"P").trim()[0]||"P");
+  if(reels)return `<div class="reel">${media}<div class="ov"><div class="who"><i></i>${name} <small>Sponsored</small></div><p>${esc(text)}</p><span class="cta"><span>${esc(hl)}</span><span>${esc(b.cta)}</span></span></div></div>`;
+  const short=text.length>140&&!S.open?.[k];
+  return `<article class="fb"><header><span class="av">${init}</span><div><b>${name}</b><small>Sponsored · 🌐</small></div></header>
+    <div class="pt">${esc(short?text.slice(0,125).trimEnd()+"…":text)} ${short?`<button class="more" data-a="more" data-k="${k}">See more</button>`:""}</div>
+    ${media}<div class="lb"><div><small>${esc(domainOf(b.url))}</small><b>${esc(hl)}</b></div><span class="cta">${esc(b.cta)}</span></div></article>`;
+}
+function stepPreview(){
+  const b=S.brief,cb=combos();
+  return head(6,"Pick which copy and headlines to pair. Every combination is previewed as it would appear on Facebook or Reels.")+
+  `<div class="grid3" style="margin-bottom:20px">
+    <div class="panel"><h2>Copy</h2><p class="sub">${b.copyVariants.length?"Tick the variants to test":"None written yet"}</p>${b.copyVariants.map((v,i)=>`<label class="row" style="margin:6px 0"><input type="checkbox" data-a="pickc" data-i="${i}" ${(b.pick.copy||[]).includes(i)?"checked":""}> Variant ${String.fromCharCode(65+i)}</label>`).join("")}</div>
+    <div class="panel"><h2>Headlines</h2><p class="sub">${b.headlines.length?"Tick the headlines to test":"None written yet"}</p>${b.headlines.map((h,i)=>`<label class="row" style="margin:6px 0;align-items:flex-start;flex-wrap:nowrap"><input type="checkbox" data-a="pickh" data-i="${i}" ${(b.pick.headlines||[]).includes(i)?"checked":""} style="margin-top:4px"> <span>${esc(h.text)}</span></label>`).join("")}</div>
+    <div class="panel stack"><h2>Creative</h2>
+      <div class="row"><button class="chip" data-a="fmt" data-v="feed" aria-pressed="${b.format!=="reels"}">Feed 4:5</button><button class="chip" data-a="fmt" data-v="reels" aria-pressed="${b.format==="reels"}">Reels 9:16</button></div>
+      ${assets?`<label class="btn" style="justify-content:center">${S.busy.up?"Uploading…":b.asset?"Replace finished creative":"Upload finished creative"}<input type="file" accept="image/*,video/*" data-a="upload" class="hide"></label>${b.asset?`<button class="btn ghost danger" data-a="clearasset">Remove upload, show template mock</button>`:`<small style="color:var(--muted)">Until you upload, previews use the ${esc((tplById(b.templateId)||{}).name||"template")} mock.</small>`}`:`<small style="color:var(--muted)">Uploading needs editor access; previews use the template mock.</small>`}
+    </div></div>
+  <div class="ads">${cb.map((x,n)=>`<div class="adwrap"><span class="lbl">Ad ${n+1}${x.c!=null?" · Copy "+String.fromCharCode(65+x.c):""}${x.h!=null?" · Headline "+(x.h+1):""}</span>${adCard(x.c,x.h,"a"+n)}</div>`).join("")}</div>
+  <div class="panel stack" style="margin-top:28px">
+    <div class="row between"><div><h2>${b.status==="published"?"Published ad brief":"Publish ad brief"}</h2><p class="sub" style="margin:4px 0 0">${b.status==="published"?"It's in the brief library. Track how it performs below.":"Adds it to the brief library so the team can see what's live and what's working."}</p></div>
+      <div class="row"><button class="btn" data-a="download">Download brief</button>${b.status==="published"?`<button class="btn" data-a="unpublish">Move back to drafts</button>`:`<button class="btn primary" data-a="publish">Publish ad brief</button>`}</div></div>
+    ${b.status==="published"?`<div class="grid2">${fld("Result","result",{opts:["untested","testing","winner","loser"]})}${fld("What happened","notes",{area:1,ph:"CPL, CTR, which variant won, what to try next"})}</div><small style="color:var(--muted)">Result options: untested, testing, winner, loser (didn't work).</small>`:""}
+  </div>`;
+}
+
+const RESULT_LABEL={untested:"Untested",testing:"Testing",winner:"Winner",loser:"Didn't work"};
+function viewBriefs(){
+  const f=S.filter;
+  const list=briefs.filter(b=>f==="all"||(f==="draft"?b.status!=="published":f==="published"?b.status==="published":b.status==="published"&&b.result===f));
+  const flt=[["all","All"],["draft","Drafts"],["published","Published"],["testing","Testing"],["winner","Winners"],["loser","Didn't work"]];
+  return `<div class="lib-head"><div><h1>Ad briefs</h1><p class="lede" style="margin:6px 0 0">Every brief the team has built, what's live and what worked.</p></div><button class="btn primary" data-a="new">New ad brief</button></div>
+  ${!db?`<p class="notice">Briefs aren't being saved in this view. Open this page signed in to claude.ai to keep and share them.</p><br>`:""}
+  <div class="libtabs">${flt.map(([k,l])=>`<button class="chip" data-a="filter" data-v="${k}" aria-pressed="${f===k}">${l}</button>`).join("")}</div>
+  ${list.length?`<div class="cards">${list.map(b=>{const t=tplById(b.templateId);const st=b.status==="published"?b.result||"untested":"draft";
+    return `<div class="card" data-a="open" data-id="${b.id}" role="button" tabindex="0"><div class="row between"><span class="res ${st}">${st==="draft"?"Draft":RESULT_LABEL[st]}</span><span class="meta">${fmtDate(b.updatedAt)}</span></div>
+    <h3>${esc(b.title||b.client||"Untitled brief")}</h3><div class="meta">${esc(b.client||"No client")}${t?" · "+esc(t.name):""}${(b.copyVariants||[]).length?" · "+b.copyVariants.length+" copy":""}${(b.headlines||[]).length?" · "+b.headlines.length+" headlines":""}</div>
+    <div class="prog" aria-label="Progress">${STEPS.map((s,i)=>`<i class="${stepDone(b,i)?"on":""}"></i>`).join("")}</div>
+    <div class="row between"><span class="meta" data-name="${esc(b.createdBy||"")}"></span><button class="btn ghost danger" data-a="delbrief" data-id="${b.id}">${S.confirmDel===b.id?"Confirm delete":"Delete"}</button></div></div>`}).join("")}</div>`
+  :`<div class="empty"><b>${briefs.length?"Nothing matches this filter":"No briefs yet"}</b>${briefs.length?"Try another filter.":"Start a new ad brief to see it here."}</div>`}`;
+}
+async function resolveNames(){
+  if(!userCap)return;
+  const ids=[...new Set(briefs.map(b=>b.createdBy).filter(Boolean))];
+  if(!ids.length)return;
+  try{const ps=await userCap.profiles(ids);ids.forEach(id=>{names[id]=(ps[id]&&ps[id].name)||"Someone"})}catch{}
+  document.querySelectorAll("[data-name]").forEach(el=>{const id=el.dataset.name;if(id)el.textContent="By "+(names[id]||"Someone")});
+}
+
+function viewLibs(){
+  const t=S.libTab;
+  const tabs=[["copy","Ad copy examples"],["headlines","Proven headlines"],["templates","Creative templates"]];
+  let body="";
+  if(t==="copy")body=`<div class="stack">${L.copy.map((r,i)=>`<div class="panel stack"><div class="row"><input data-lib="copy.${i}.title" value="${esc(r.title)}" aria-label="Title" style="flex:1"><button class="btn ghost danger" data-a="libdel" data-k="copy" data-i="${i}">Delete</button></div><textarea data-lib="copy.${i}.text" rows="8" aria-label="Ad copy">${esc(r.text)}</textarea></div>`).join("")}<div><button class="btn" data-a="libadd" data-k="copy">Add an ad copy example</button></div></div>`;
+  if(t==="headlines")body=`<div class="panel stack">${L.headlines.map((h,i)=>`<div class="hlrow"><input data-lib="headlines.${i}.text" value="${esc(h.text)}" aria-label="Headline"><span class="count">${h.text.length}</span><button class="btn ghost danger" data-a="libdel" data-k="headlines" data-i="${i}" aria-label="Delete">✕</button></div>`).join("")}<div><button class="btn" data-a="libadd" data-k="headlines">Add a headline</button></div></div>`;
+  if(t==="templates")body=`<div class="stack">${L.templates.map(x=>`<div class="panel"><div class="split"><div class="stack">
+      <div class="grid2"><label class="fld"><span>Name</span><input data-tpl="${x.id}.name" value="${esc(x.name)}"></label><label class="fld"><span>Type</span><select data-tpl="${x.id}.kind"><option value="static" ${x.kind==="static"?"selected":""}>Static</option><option value="video" ${x.kind==="video"?"selected":""}>Video</option></select></label></div>
+      <label class="fld"><span>Structure, one item per line</span><textarea data-tpl="${x.id}.structureText" rows="5">${esc((x.structure||[]).join("\n"))}</textarea></label>
+      <label class="fld"><span>Notes</span><textarea data-tpl="${x.id}.description" rows="2">${esc(x.description||"")}</textarea></label>
+      <div class="grid2"><label class="fld"><span>Suggested tool</span><select data-tpl="${x.id}.tool">${TOOLS.map(o=>`<option ${o===x.tool?"selected":""}>${o}</option>`).join("")}</select></label>
+      <label class="fld"><span>Preview style</span><select data-tpl="${x.id}.style">${Object.keys(DEMO).map(o=>`<option ${o===x.style?"selected":""}>${o}</option>`).join("")}</select></label></div>
+      <div><button class="btn ghost danger" data-a="tpldel" data-id="${x.id}">Delete template</button></div></div>
+      <div style="max-width:220px">${mock(x.style,DEMO[x.style]||x.structure,x.kind==="video"?"r916":"r45")}</div></div></div>`).join("")}
+      <div><button class="btn" data-a="tpladd">Add a creative template</button></div></div>`;
+  return `<div class="lib-head"><div><h1>Libraries</h1><p class="lede" style="margin:6px 0 0">The references every brief is generated from. Changes save automatically and apply to the whole team.</p></div></div>
+  <div class="libtabs">${tabs.map(([k,l])=>`<button class="chip" data-a="libtab" data-v="${k}" aria-pressed="${t===k}">${l}</button>`).join("")}</div>${body}`;
+}
+
+/* ---------- library writes ---------- */
+let libSaving={};
+async function saveLib(k){
+  if(!db){toast("Sign in to save library changes.");return}
+  if(libSaving[k]){libSaving[k]=2;return}
+  libSaving[k]=1;
+  try{await db.doc("library/"+k).set({items:L[k]});toast("Library saved")}
+  catch(e){toast(e.code==="invalid_argument"?"You have view-only access to the library.":"Couldn't save the library. Try again.")}
+  const re=libSaving[k]===2;libSaving[k]=0;if(re)saveLib(k);
+}
+async function saveTpl(x){
+  if(!db)return;
+  const {id,...rest}=x;
+  try{await db.doc("templates/"+id).set(rest)}catch(e){toast(e.code==="invalid_argument"?"You have view-only access to templates.":"Couldn't save the template.")}
+}
+
+/* ---------- events ---------- */
+document.addEventListener("input",e=>{
+  const el=e.target,f=el.dataset.f;
+  if(f&&S.brief){
+    let v=el.value;if(el.dataset.num)v=Number(v);
+    setPath(S.brief,f,v);
+    if(el.dataset.count){const c=document.getElementById(el.dataset.count);if(c){c.textContent=v.length+"/40";c.classList.toggle("over",v.length>40)}}
+    if(el.dataset.rerender==="mock"){const t=tplById(S.brief.templateId);const m=$("#crmock");if(m&&t)m.innerHTML=mock(t.style,v.split("\n"),t.kind==="video"?"r916":"r45")}
+    if(f==="title"||f==="client"){const bt=$(".rail .bt");if(bt)bt.textContent=S.brief.title||S.brief.client||"Untitled brief"}
+    scheduleSave();
+  }
+});
+document.addEventListener("change",async e=>{
+  const el=e.target;
+  if(el.dataset.f&&el.tagName==="SELECT"&&S.brief){if(["tool","result","cta"].includes(el.dataset.f))render();return}
+  if(el.dataset.lib){const [k,i,p]=el.dataset.lib.split(".");L[k][+i][p]=el.value;saveLib(k);return}
+  if(el.dataset.tpl){const [id,p]=el.dataset.tpl.split(".");const x=tplById(id);if(!x)return;
+    if(p==="structureText")x.structure=el.value.split("\n").map(s=>s.trim()).filter(Boolean);else x[p]=el.value;
+    saveTpl(x);if(p==="style"||p==="kind")render();return}
+  if(el.dataset.a==="upload"&&el.files&&el.files[0]){
+    const file=el.files[0];if(!assets)return;S.busy.up=1;render();
+    try{const r=await assets.upload(file);S.brief.asset={id:r.id,url:"/_blob/"+r.id,type:r.contentType||file.type};scheduleSave()}
+    catch(err){toast(err&&err.code==="too_large"?"That file is over 20 MB.":"Upload didn't work. Check you have editor access and try again.")}
+    delete S.busy.up;render();
+  }
+});
+document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.classList.contains("card")){e.preventDefault();e.target.click()}});
+document.addEventListener("click",async e=>{
+  const el=e.target.closest("[data-a]");if(!el)return;
+  const a=el.dataset.a,b=S.brief;
+  if(el.tagName==="INPUT"&&el.type==="file")return;
+  switch(a){
+    case"nav":if(S.view==="editor")await saveNow();S.view=el.dataset.v;if(el.dataset.t)S.libTab=el.dataset.t;S.brief=null;render();window.scrollTo(0,0);break;
+    case"new":{S.brief=newBrief();S.briefId=db?db.collection("briefs").doc().id:"local-"+uidGen();S.step=0;S.view="editor";S.open={};render();setSave(db?"":"Not saved: sign in to keep briefs");break}
+    case"open":{if(e.target.closest('[data-a="delbrief"]'))return;const x=briefs.find(z=>z.id===el.dataset.id);if(!x)return;const {id,...d}=x;S.brief=Object.assign(newBrief(),JSON.parse(JSON.stringify(d)));S.briefId=id;S.step=0;S.view="editor";S.open={};render();setSave("Saved");window.scrollTo(0,0);break}
+    case"delbrief":e.stopPropagation();if(S.confirmDel!==el.dataset.id){S.confirmDel=el.dataset.id;render();setTimeout(()=>{if(S.confirmDel===el.dataset.id){S.confirmDel=null;if(S.view==="briefs")render()}},4000);break}
+      try{await db.doc("briefs/"+el.dataset.id).delete();toast("Brief deleted")}catch{toast("Couldn't delete that brief.")}S.confirmDel=null;break;
+    case"filter":S.filter=el.dataset.v;render();break;
+    case"step":S.step=+el.dataset.i;saveNow();render();window.scrollTo(0,0);break;
+    case"stop":S.busy[el.dataset.k]?.abort?.();break;
+    case"copyref":{e.stopPropagation();const all=L.copy.map(r=>r.id);let cur=b.copyRefs.length?[...b.copyRefs]:all;cur=el.checked?[...new Set([...cur,el.dataset.id])]:cur.filter(x=>x!==el.dataset.id);b.copyRefs=cur.length===all.length?[]:cur;if(!cur.length){b.copyRefs=[];toast("Keep at least one reference: using all of them.")}scheduleSave();render();break}
+    case"gencopy":{const refs=b.copyRefs.length?L.copy.filter(r=>b.copyRefs.includes(r.id)):L.copy;if(!refs.length){toast("Add reference ad copy in Libraries first.");break}
+      ai("copy",copyPrompt(b.nCopy||3,refs),d=>{(d.variants||[]).forEach(v=>b.copyVariants.push({basedOn:v.basedOn||"",text:v.text||""}))});break}
+    case"regencopy":{const i=+el.dataset.i,v=b.copyVariants[i];const ref=L.copy.find(r=>r.title===v.basedOn)||L.copy[i%L.copy.length];if(!ref)break;
+      ai("c"+i,copyPrompt(1,[ref]),d=>{const n=(d.variants||[])[0];if(n)b.copyVariants[i]={basedOn:n.basedOn||ref.title,text:n.text||""}});break}
+    case"delcopy":b.copyVariants.splice(+el.dataset.i,1);b.pick.copy=[0];scheduleSave();render();break;
+    case"addcopy":b.copyVariants.push({basedOn:"",text:""});scheduleSave();render();break;
+    case"hlref":{const all=L.headlines.map(h=>h.id);let cur=b.hlRefs.length?[...b.hlRefs]:all;const id=el.dataset.id;cur=cur.includes(id)?cur.filter(x=>x!==id):[...cur,id];b.hlRefs=(!cur.length||cur.length===all.length)?[]:cur;scheduleSave();render();break}
+    case"genhl":ai("hl",hlPrompt(b.nHl||8),d=>{(d.headlines||[]).forEach(h=>b.headlines.push({text:h.text||"",angle:h.angle||""}))});break;
+    case"delhl":b.headlines.splice(+el.dataset.i,1);b.pick.headlines=[0];scheduleSave();render();break;
+    case"addhl":b.headlines.push({text:"",angle:""});scheduleSave();render();break;
+    case"picktpl":{if(b.templateId!==el.dataset.id){b.templateId=el.dataset.id;b.tool=(tplById(el.dataset.id)||{}).tool||"";b.creative=null}scheduleSave();render();break}
+    case"gencreative":{const t=tplById(b.templateId);if(!t)break;ai("cr",creativePrompt(t),d=>{b.creative={linesText:(d.lines||[]).join("\n"),visual:d.visual||"",prompt:d.prompt||"",steps:d.steps||[]}});break}
+    case"genugc":ai("ugc",ugcPrompt(),d=>{b.ugc.out={script:d.script||[],prompt:d.prompt||"",tips:d.tips||[]}});break;
+    case"gencap":ai("cap",capcutPrompt(),d=>{b.capcut.out={length:d.length||"",timeline:d.timeline||[],captionStyle:d.captionStyle||"",music:d.music||"",searchTerms:d.searchTerms||[],export:d.export||""}});break;
+    case"copytext":{const t=document.getElementById(el.dataset.src);if(t)copyOut(t.value,t);break}
+    case"copyplan":{const o=b.capcut.out;copyOut(`CapCut edit plan: ${b.title||b.client}\nAspect ${b.capcut.aspect}, ${o.length}\n\n`+o.timeline.map(s=>`${s.time}\n  Visual: ${s.visual}\n  Caption: ${s.caption}\n  Edit: ${s.edit}`).join("\n\n")+`\n\nCaption style: ${o.captionStyle}\nMusic: ${o.music}\nTemplate search: ${o.searchTerms.join(", ")}\nExport: ${o.export}`);break}
+    case"pickc":case"pickh":{const k=a==="pickc"?"copy":"headlines",i=+el.dataset.i;let p=b.pick[k]||[];p=p.includes(i)?p.filter(x=>x!==i):[...p,i].sort((x,y)=>x-y);b.pick[k]=p;scheduleSave();render();break}
+    case"fmt":b.format=el.dataset.v;scheduleSave();render();break;
+    case"clearasset":b.asset=null;scheduleSave();render();break;
+    case"more":S.open=S.open||{};S.open[el.dataset.k]=1;render();break;
+    case"publish":if(!b.client||!b.copyVariants.length){toast("Add a client and at least one ad copy variant before publishing.");break}
+      b.status="published";b.publishedAt=Date.now();await saveNow();render();toast("Published to the brief library");break;
+    case"unpublish":b.status="draft";await saveNow();render();toast("Moved back to drafts");break;
+    case"download":downloadBrief();break;
+    case"libtab":S.libTab=el.dataset.v;render();break;
+    case"libadd":{const k=el.dataset.k;L[k].push(k==="copy"?{id:uidGen(),title:"New example",text:""}:{id:uidGen(),text:"New headline"});render();saveLib(k);break}
+    case"libdel":{const k=el.dataset.k;L[k].splice(+el.dataset.i,1);render();saveLib(k);break}
+    case"tpladd":{const x={id:uidGen(),name:"New template",kind:"static",structure:["Call out the audience","Benefit","CTA"],description:"",tool:"Canva",style:"simple",order:(L.templates.length+1)*10};L.templates.push(x);render();saveTpl(x);break}
+    case"tpldel":{if(!db)break;try{await db.doc("templates/"+el.dataset.id).delete()}catch{toast("Couldn't delete that template.")}break}
+  }
+});
+async function copyOut(text,ta){
+  try{await navigator.clipboard.writeText(text);toast("Copied")}
+  catch{if(ta){ta.focus();ta.select();toast("Selected – press Ctrl+C or ⌘C to copy")}else toast("Copy isn't available here. Use Download brief instead.")}
+}
+function briefMarkdown(){
+  const b=S.brief,t=tplById(b.templateId);
+  let m=`# ${b.title||b.client||"Ad brief"}\n\n## Client brief\n${briefText(b)}\n\n## Ad copy\n`;
+  b.copyVariants.forEach((v,i)=>m+=`\n### Variant ${String.fromCharCode(65+i)}${v.basedOn?" (modelled on "+v.basedOn+")":""}\n${v.text}\n`);
+  m+=`\n## Headlines\n`+b.headlines.map(h=>`- ${h.text}`).join("\n")+"\n";
+  if(t){m+=`\n## Creative: ${t.name}\nBuild in: ${b.tool||t.tool}\n`;if(b.creative)m+=`\nOn-screen text:\n${b.creative.linesText}\n\nArt direction: ${b.creative.visual}\n\nPrompt:\n${b.creative.prompt}\n`}
+  if(b.ugc.out)m+=`\n## UGC (${b.ugc.format}, ${b.ugc.length})\n`+b.ugc.out.script.map(s=>`- ${s.time}: ${s.say?"\""+s.say+"\" ":""}[${s.onScreen||""}] ${s.shot||""}`).join("\n")+`\n\nPrompt for ${b.ugc.tool}:\n${b.ugc.out.prompt}\n`;
+  if(b.capcut.out)m+=`\n## CapCut edit (${b.capcut.aspect})\n`+b.capcut.out.timeline.map(s=>`- ${s.time}: ${s.visual} | "${s.caption}" | ${s.edit}`).join("\n")+`\n\nCaptions: ${b.capcut.out.captionStyle}\nMusic: ${b.capcut.out.music}\n`;
+  m+=`\n## Ad variants\n`+combos().map((x,n)=>`- Ad ${n+1}: Copy ${x.c!=null?String.fromCharCode(65+x.c):"-"} + "${x.h!=null?b.headlines[x.h].text:"-"}"`).join("\n")+"\n";
+  if(b.status==="published")m+=`\n## Result: ${RESULT_LABEL[b.result]||b.result}\n${b.notes||""}\n`;
+  return m;
+}
+async function downloadBrief(){
+  const name=((S.brief.title||S.brief.client||"ad-brief").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"ad-brief")+".md";
+  if(!downloads){copyOut(briefMarkdown());return}
+  try{await downloads.save({filename:name,data:briefMarkdown()})}catch(e){if(e&&e.code!=="cancelled"&&e.code!=="declined")toast("Download didn't work. Try again.")}
+}
+
+/* ---------- boot ---------- */
+render();
+(async()=>{
+  if(!window.claude)return;
+  const [d,s,u,as,dl]=await Promise.all(["db","sample","user","assets","downloads"].map(n=>claude.use(n).catch(()=>null)));
+  db=d;sample=s;userCap=u;assets=as;downloads=dl;
+  if(userCap){try{uid=await userCap.id()}catch{}}
+  if(!db){render();return}
+  db.collection("briefs").orderBy("updatedAt","desc").limit(300).onSnapshot(snap=>{
+    briefs=snap.docs.map(x=>({id:x.id,...x.data()}));if(S.view==="briefs")render();
+  },()=>{});
+  db.doc("library/copy").onSnapshot(x=>{const v=x.exists?x.data().items||[]:[];if(!libSaving.copy){L.copy=v.map(r=>({...r}));if(S.view!=="editor"||S.step===1)rerenderSafe()}},()=>{});
+  db.doc("library/headlines").onSnapshot(x=>{const v=x.exists?x.data().items||[]:[];if(!libSaving.headlines){L.headlines=v.map(r=>({...r}));if(S.view!=="editor"||S.step===2)rerenderSafe()}},()=>{});
+  db.collection("templates").orderBy("order").onSnapshot(snap=>{L.templates=snap.docs.map(x=>({id:x.id,...JSON.parse(JSON.stringify(x.data()))}));rerenderSafe()},()=>{});
+})();
+function rerenderSafe(){
+  const a=document.activeElement;
+  if(a&&(a.tagName==="TEXTAREA"||a.tagName==="INPUT")&&(a.dataset.lib||a.dataset.tpl||a.dataset.f))return;
+  render();
+}
+</script>
 </body>
 </html>
